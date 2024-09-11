@@ -111,7 +111,7 @@ daq = MyDAQ()
 #daq.configure_read_task(rate=1000, samps_per_chan=1000)
 
 # Simulate reading data from MyDAQ (replace this with actual read in practice)
-signal_data = np.sin(2 * np.pi * 50 * daq.get_time_array()) + np.sin(2 * np.pi * 100 * daq.get_time_array()) + 3*np.sin(2 * np.pi * 200 * daq.get_time_array())# Example signal: 50 Hz sine wave
+signal_data = np.sin(2 * np.pi * 50 * daq.get_time_array()) + np.sin(2 * np.pi * 100 * daq.get_time_array()) + 3*np.sin(2 * np.pi * 200 * daq.get_time_array())
 
 # Perform FFT on the data
 daq.fft(signal_data)
