@@ -117,3 +117,4 @@ signal_data = np.sin(2 * np.pi * 50 * daq.get_time_array()) + np.sin(2 * np.pi *
 daq.fft(signal_data)
 
 daq.close()
+print('poop')
