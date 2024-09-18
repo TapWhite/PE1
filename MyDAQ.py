@@ -12,11 +12,11 @@ class MyDAQ():
         self.device_name = device_name
         self.write_task = None
         self.read_task = None
-        self.rate=500
-        self.samps_per_chan=2500
+        self.rate = 500
+        self.samps_per_chan = 50
 
     def configure_write_task(self, rate=500, samps_per_chan=2500):
-        self.write_task = dx.Task()
+        self.write_task = dx.Task('AOTask')
         self.write_task.ao_channels.add_ao_voltage_chan(f'{self.device_name}/ao0')
         self.write_task.timing.cfg_samp_clk_timing(
             rate,
@@ -35,8 +35,13 @@ class MyDAQ():
         self.write_task.stop()
     
     def configure_read_task(self, rate=100, samps_per_chan=50):
-        """Configures the read task with the given parameters."""
-        self.read_task = dx.Task()
+        
+        """Configures the read task with the given parameters.
+            Rate = how many per seconds
+            Samps_per_chan = number of data points
+        
+        """
+        self.read_task = dx.Task(dx.Task('AITask'))
         self.read_task.ai_channels.add_ai_voltage_chan(f'{self.device_name}/ai0')
         self.read_task.timing.cfg_samp_clk_timing(
             rate,
@@ -54,21 +59,48 @@ class MyDAQ():
         data = self.read_task.read(number_of_samples_per_channel=self.samps_per_chan)
         return data
 
-    def read_write():
-        pass
-    
-    def generate_sine_wave(self, frequency, amplitude, phase_shift, offset, duration):
+    def read_write(self, data, rate=100, samps_per_chan= 50, read_channel='ai0' , write_channel= 'ao0'):
+        self.read_task = dx.Task('AITask')
+        self.write_task = dx.Task('AOTask')
+        self.read_task.ai_channels.add_ai_voltage_chan(f'myDAQ1/{read_channel}')
+        self.write_task.ao_channels.add_ao_voltage_chan(f'myDAQ1/{write_channel}')
+
+        self.write_task.timing.cfg_samp_clk_timing(
+            rate,
+            sample_mode = dx.constants.AcquisitionType.FINITE,
+            samps_per_chan=samps_per_chan
+        )
+
+
+        self.read_task.timing.cfg_samp_clk_timing(
+            rate,
+            sample_mode=dx.constants.AcquisitionType.FINITE,
+            samps_per_chan=samps_per_chan
+        )
+
+        self.write_task.write(data, auto_start=True)
+
+        data = self.read_task.read(number_of_samples_per_channel=self.samps_per_chan)
+
+        self.write_task.stop()
+
+        return data
+
+    def generate_sine_wave(self, frequency=10, amplitude=5, phase_shift=0, offset=0):
         """Generates a sine wave with the specified parameters."""
-        t = np.linspace(0, duration, int(self.rate * duration), endpoint=False)
-        sine_wave = amplitude * np.sin(2 * np.pi * frequency * t + phase_shift) + offset
+        x = self.get_time_array()
+        sine_wave = amplitude * np.sin(2 * np.pi * frequency * x + phase_shift) + offset
         return sine_wave
     
-    def get_time_array(self):
-        return np.linspace(0, self.samps_per_chan / self.rate, num=self.samps_per_chan-1)
+    def get_time_array(self,include_last=False):
+        if not include_last:
+            return np.linspace(0, self.samps_per_chan / self.rate, num=self.samps_per_chan)
+        else:
+            return np.linspace(0, self.samps_per_chan / self.rate, num=self.samps_per_chan-1)
 
     def plot_data(self, data, output_path='output.pdf'):
         """Plots the data and saves the figure to a file."""
-        x = np.linspace(0, self.samps_per_chan / self.rate, num=self.samps_per_chan - 1)
+        x = self.get_time_array()
         plt.figure()
         plt.scatter(x, data)
         plt.xlabel('Time (s)')
@@ -108,13 +140,27 @@ class MyDAQ():
 daq = MyDAQ()
 
 # Configure for reading
-#daq.configure_read_task(rate=1000, samps_per_chan=1000)
+signal_data = daq.generate_sine_wave()
 
-# Simulate reading data from MyDAQ (replace this with actual read in practice)
-signal_data = np.sin(2 * np.pi * 50 * daq.get_time_array()) + np.sin(2 * np.pi * 100 * daq.get_time_array()) + 3*np.sin(2 * np.pi * 200 * daq.get_time_array())
 
+
+
+data = daq.read_write(signal_data)
+
+daq.plot_data(data)
+
+plt.plot(signal_data, label='Generated Data')
+plt.plot(data, label='Read Data')
+plt.legend()
+plt.show()
+
+#daq.plot_data(signal_data)
+#data = daq.read_write(signal_data)
+#data = daq.read()
+#print(data)
+#daq.plot_data(data)
 # Perform FFT on the data
-daq.fft(signal_data)
+#daq.fft(signal_data)
 
 daq.close()
 print('poop')
