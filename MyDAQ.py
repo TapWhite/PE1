@@ -2,7 +2,7 @@ import nidaqmx as dx
 import numpy as np
 import time
 import matplotlib.pyplot as plt
-from scipy.fft import fft, fftfreq
+from scipy.fft import fft, fftfreq , rfft, rfftfreq
 from scipy.signal import square
 
 
@@ -133,6 +133,23 @@ class MyDAQ():
         plt.show()
 
         return positive_freqs, fft_magnitudes
+    
+    def rfft(self, data):
+        """Performs FFT on the data and plots the frequency spectrum."""
+        N = len(data)
+        fft_values = rfft(data)
+        freqs = rfftfreq(N, 1/self.rate)
+        fft_magnitudes = np.abs(fft_values)
+
+        # Plot the frequency spectrum
+        plt.figure()
+        plt.scatter(freqs, fft_magnitudes)
+        plt.xlabel('Frequency (Hz)')
+        plt.ylabel('Amplitude')
+        plt.title('FFT Frequency Spectrum')
+        plt.show()
+
+        return freqs, fft_magnitudes
 
 
 
@@ -145,14 +162,13 @@ signal_data = daq.generate_sine_wave()
 
 
 
-data = daq.read_write(signal_data)
+#$data = daq.read_write(signal_data)
 
-daq.plot_data(data)
+daq.plot_data(signal_data)
 
-plt.plot(signal_data, label='Generated Data')
-plt.plot(data, label='Read Data')
-plt.legend()
-plt.show()
+daq.fft(signal_data)
+daq.rfft(signal_data)
+
 
 #daq.plot_data(signal_data)
 #data = daq.read_write(signal_data)
