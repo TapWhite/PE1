@@ -4,6 +4,7 @@ import time
 import matplotlib.pyplot as plt
 from scipy.fft import fft, fftfreq , rfft, rfftfreq
 from scipy.signal import square
+import scipy as sp
 
 
 
@@ -12,8 +13,8 @@ class MyDAQ():
         self.device_name = device_name
         self.write_task = None
         self.read_task = None
-        self.rate = 500
-        self.samps_per_chan = 50
+        self.rate = 100000
+        self.samps_per_chan = 50000
 
     def configure_write_task(self, rate=500, samps_per_chan=2500):
         self.write_task = dx.Task('AOTask')
@@ -86,10 +87,10 @@ class MyDAQ():
 
         return data
 
-    def generate_sine_wave(self, frequency=10, amplitude=5, phase_shift=0, offset=0):
+    def generate_sine_wave(self, frequency=1002, amplitude=5, phase_shift=0, offset=0):
         """Generates a sine wave with the specified parameters."""
         x = self.get_time_array()
-        sine_wave = amplitude * np.sin(2 * np.pi * frequency * x + phase_shift) + offset
+        sine_wave = amplitude * np.sin(2 * np.pi * frequency * x + phase_shift) + offset +  amplitude*10 * np.sin(2 * np.pi * frequency*2 * x + phase_shift) + offset
         return sine_wave
     
     def get_time_array(self,include_last=False):
@@ -102,7 +103,7 @@ class MyDAQ():
         """Plots the data and saves the figure to a file."""
         x = self.get_time_array()
         plt.figure()
-        plt.scatter(x, data)
+        plt.plot(x, data)
         plt.xlabel('Time (s)')
         plt.ylabel('Voltage (V)')
         plt.title('MyDAQ Reading test from Function Generator')
@@ -135,11 +136,11 @@ class MyDAQ():
         return positive_freqs, fft_magnitudes
     
     def rfft(self, data):
-        """Performs FFT on the data and plots the frequency spectrum."""
+        """Performs RFFT on the data and plots the frequency spectrum."""
         N = len(data)
         fft_values = rfft(data)
         freqs = rfftfreq(N, 1/self.rate)
-        fft_magnitudes = np.abs(fft_values)
+        fft_magnitudes = 2 * np.abs(fft_values) / N
 
         # Plot the frequency spectrum
         plt.figure()
@@ -151,6 +152,17 @@ class MyDAQ():
 
         return freqs, fft_magnitudes
 
+    def ifft(self, data):
+        pass
+    
+    def irfft(self, data):
+        pass
+    
+    def find_peaks(self, temp_tuple):
+        freqs, magnitudes = temp_tuple
+        peaks_index = sp.signal.argrelextrema(magnitudes, np.greater)   
+        
+        return freqs[peaks_index], magnitudes[peaks_index]
 
 
 # Example usage:
@@ -167,8 +179,10 @@ signal_data = daq.generate_sine_wave()
 daq.plot_data(signal_data)
 
 daq.fft(signal_data)
-daq.rfft(signal_data)
+a= daq.rfft(signal_data)
 
+
+print(daq.find_peaks(a))
 
 #daq.plot_data(signal_data)
 #data = daq.read_write(signal_data)
