@@ -4,7 +4,7 @@ import nidaqmx as dx
 from scipy.signal import sawtooth, square
 from scipy.fft import rfft, rfftfreq, irfft
 from time import sleep
-
+import sounddevice as sd
 
 class MyDAQ:
     def __init__(self):
@@ -223,15 +223,22 @@ class MyDAQ:
 
 
     @staticmethod
-    def performRFFT(data: np.ndarray, samplerate : int, norm='backward'):
+    def performRFFT(data: np.ndarray, samplerate : int, norm='forward'):
 
         complex_coefficients = rfft(data, norm=norm)
         frequencies = rfftfreq(len(data), 1 / samplerate)
+        if norm =='forward':
+            complex_coefficients[1:-1] *= 2  # Correct scaling to show accurate 
+        
+        if norm =='backward':
+            pass
         return frequencies, complex_coefficients
     
     @staticmethod
-    def performIRFFT():
-        pass
+    def performIRFFT(complex_coefficients, norm='forward'):
+        complex_coefficients[1:-1] /= 2    
+        original_data = irfft(complex_coefficients, norm=norm)    
+        return original_data
     
 
     def __str__(self) -> str:
@@ -249,25 +256,163 @@ class MyDAQ:
             + f"\nSample rate: {self.samplerate}"
         )
 
+    @staticmethod
+    def remove_magnitude(complex_coefficients: np.ndarray) -> np.ndarray:
+        """
+        Remove the magnitude information from FFT data while keeping phase intact.
+        This sets the magnitude of each frequency component to 1.
+        """
+        # Get the phase of the complex coefficients
+        phase = np.angle(complex_coefficients)
 
+        magnitude = np.abs(complex_coefficients)
+        # Recreate the complex coefficients with magnitude 1 but the same phase
+        magnitude_removed_coefficients = np.exp(1j * phase) * 0.2*np.max(magnitude) # e^(i*phase)
+
+        return magnitude_removed_coefficients
+    
+
+    @staticmethod
+    def remove_phase(complex_coefficients: np.ndarray) -> np.ndarray:
+        """
+        Remove phase information from the complex FFT coefficients,
+        leaving only the magnitude information.
+
+        Parameters:
+        complex_coefficients (np.ndarray): Array of complex FFT coefficients.
+
+        Returns:
+        np.ndarray: Modified complex array with only magnitude information.
+        """
+        # Retain the magnitude and set phase to zero
+        magnitude_only = np.abs(complex_coefficients) * np.exp(1j * 0)  # Phase set to 0
+
+        return magnitude_only
+    
+    
 daq = MyDAQ()
 
-samplerate = 1000
-frequency =  10
-duration = 2
-x, y= daq.generateWaveform(function='sine', samplerate=samplerate, frequency=frequency, duration=duration)
 
-plt.plot(x,y)
+# Test case 1 -----------------------------------------------
+# samplerate = 1000
+# frequency =  10
+# duration = 2
+# x, y= daq.generateWaveform(function='sine', samplerate=samplerate, frequency=frequency, duration=duration, amplitude=3.5, ) 
+
+# y= y+2
+# plt.plot(x,y)
+# plt.show()
+
+
+# norm = 'forward'
+# frequencies, complex_coefficients = daq.performRFFT(data=y, samplerate=samplerate, norm=norm)
+# plt.scatter(frequencies, np.abs(complex_coefficients))
+# plt.show()
+
+# reconstructed_data = daq.performIRFFT(complex_coefficients)
+
+# plt.plot(x, reconstructed_data)
+# plt.show()
+
+# Test case 1 -----------------------------------------------
+
+# Test case 2 ---------------------------------------
+# Set parameters
+# duration = 5  # seconds to record
+# sample_rate = 44100  # CD-quality sample rate
+
+# # Record audio from the microphone
+# print("Recording...")
+# audio = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype='float64')
+# sd.wait()  # Wait for the recording to finish
+# print("Recording finished!")
+
+# # Convert the recorded audio from 2D (channels) to 1D
+# time = daq.getTimeArray(duration=duration, samplerate=sample_rate)
+# audio = audio.flatten()
+# plt.plot(time, audio)
+# plt.show()
+
+# frequencies, complex_coefficients = daq.performRFFT(data=audio, samplerate=sample_rate)
+# plt.scatter(frequencies, np.abs(complex_coefficients))
+# plt.show()
+
+# reconstructed_audio = daq.performIRFFT(complex_coefficients)
+
+# plt.plot(time, reconstructed_audio)
+# plt.show()
+
+# # Playback the recorded audio
+# print("Playing back the recorded audio...")
+# sd.play(reconstructed_audio, samplerate=sample_rate)
+# sd.wait()  # Wait until the playback is finished
+# # Test case 2 ---------------------------------------
+
+
+# Test case 3 ----------------------------------------------------------------------------------------
+# Set parameters
+# duration = 5  # seconds to record
+# sample_rate = 44100  # CD-quality sample rate
+
+# # Record audio from the microphone
+# print("Recording...")
+# audio = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype='float64')
+# sd.wait()  # Wait for the recording to finish
+# print("Recording finished!")
+
+# # Convert the recorded audio from 2D (channels) to 1D
+# time = daq.getTimeArray(duration=duration, samplerate=sample_rate)
+# audio = audio.flatten()
+# plt.plot(time, audio)
+# plt.show()
+
+# frequencies, complex_coefficients = daq.performRFFT(data=audio, samplerate=sample_rate)
+# plt.scatter(frequencies, np.abs(complex_coefficients))
+# plt.show()
+
+# new_complex_coefficients = daq.remove_magnitude(complex_coefficients)
+# reconstructed_audio = daq.performIRFFT(new_complex_coefficients)
+
+# plt.plot(time, reconstructed_audio)
+# plt.show()
+
+# # Playback the recorded audio
+# print("Playing back the recorded audio...")
+# sd.play(reconstructed_audio, samplerate=sample_rate)
+# sd.wait()  # Wait until the playback is finished
+# Test case 3 ----------------------------------------------------------------------------------------
+
+# Test case 4 ----------------------------------------------------------------------------------------
+# Set parameters
+duration = 5  # seconds to record
+sample_rate = 44100  # CD-quality sample rate
+
+# Record audio from the microphone
+print("Recording...")
+audio = sd.rec(int(duration * sample_rate), samplerate=sample_rate, channels=1, dtype='float64')
+sd.wait()  # Wait for the recording to finish
+print("Recording finished!")
+
+# Convert the recorded audio from 2D (channels) to 1D
+time = daq.getTimeArray(duration=duration, samplerate=sample_rate)
+audio = audio.flatten()
+plt.plot(time, audio)
 plt.show()
 
-
-norm = 'backward'
-frequencies, complex_coefficients = daq.performRFFT(data=y, samplerate=samplerate, norm=norm)
+frequencies, complex_coefficients = daq.performRFFT(data=audio, samplerate=sample_rate)
 plt.scatter(frequencies, np.abs(complex_coefficients))
+plt.xscale('log')
+plt.yscale('log')
 plt.show()
 
+new_complex_coefficients = daq.remove_phase(complex_coefficients)
+reconstructed_audio = daq.performIRFFT(new_complex_coefficients)
 
-reconstructed_data = irfft(complex_coefficients, norm=norm)
-
-plt.plot(x, reconstructed_data)
+plt.plot(time, reconstructed_audio)
 plt.show()
+
+# Playback the recorded audio
+print("Playing back the recorded audio...")
+sd.play(reconstructed_audio, samplerate=sample_rate)
+sd.wait()  # Wait until the playback is finished
+# Test case 4 ----------------------------------------------------------------------------------------
