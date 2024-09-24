@@ -233,3 +233,6 @@ class MyDAQ:
             + f"\nBase name: {self.name}"
             + f"\nSample rate: {self.samplerate}"
         )
+
+
+daq = MyDAQ()
